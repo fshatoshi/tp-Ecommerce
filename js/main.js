@@ -1,5 +1,48 @@
 const paginationContainer = document.getElementById("pagination");
 
+
+function ajouterAuPanier(produit, quantite) {
+  // Lire le panier actuel (ou tableau vide)
+  let panier = JSON.parse(localStorage.getItem("panier")) || [];
+
+  // Vérifier si produit déjà présent
+  const index = panier.findIndex(p => p.id === produit.id);
+  if (index !== -1) {
+    panier[index].quantite += quantite;
+  } else {
+    panier.push({
+      id: produit.id,
+      titre: produit.title,
+      prix: produit.price,
+      image: produit.thumbnail,
+      quantite: quantite
+    });
+  }
+
+  // Sauvegarder
+  localStorage.setItem("panier", JSON.stringify(panier));
+}
+
+
+
+function mettreAJourCompteurPanier() {
+  const badge = document.getElementById("cartCount");
+  const panier = JSON.parse(localStorage.getItem("panier")) || [];
+
+  const totalQuantite = panier.reduce((acc, item) => acc + item.quantite, 0);
+
+  if (totalQuantite > 0) {
+    badge.textContent = totalQuantite;
+    badge.style.display = "inline-block";
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+
+
+
+
 function genererPagination(totalPages) {
   paginationContainer.innerHTML = "";
 
@@ -106,28 +149,28 @@ let currentPage = 0;
 let limit = 12;
 
 function afficherProduits(produits) {
-  produitsContainer.innerHTML = "";
-
-  produits.forEach(prod => {
-    const col = document.createElement("div");
-    col.className = "col-sm-6 col-md-4 mb-4";
-
-    col.innerHTML = `
-      <div class="card shadow-sm">
-        <img src="${prod.thumbnail}" class="card-img-top" alt="${prod.title}">
-        <div class="card-body d-flex flex-column">
-          <h5 class="card-title">${prod.title}</h5>
-          <p class="card-text text-muted small">${prod.description.substring(0, 60)}...</p>
-          <div class="mt-auto">
-            <span class="badge bg-primary mb-2">${prod.price}€</span>
-            <button class="btn btn-sm btn-outline-primary w-100" onclick='ajouterAuPanier(${JSON.stringify(prod)})'>Ajouter au panier</button>
+    produitsContainer.innerHTML = "";
+    produits.forEach(produit => {
+      const div = document.createElement("div");
+      div.className = "col-md-4 mb-4";
+      div.innerHTML = `
+        <div class="card h-100 shadow-sm">
+          <img src="${produit.thumbnail}" class="card-img-top" alt="${produit.title}" style="height:200px; object-fit:cover">
+          <div class="card-body">
+            <h5 class="card-title">${produit.title}</h5>
+            <p class="card-text text-muted">${produit.description.substring(0, 80)}...</p>
+            <p class="fw-bold text-primary">${produit.price}€</p>
+            <button class="btn btn-primary w-100">Voir les détails</button>
           </div>
-        </div>
-      </div>`;
-      
-    produitsContainer.appendChild(col);
+        </div>`;
+
+    const btn = div.querySelector("button");
+    btn.onclick = () => afficherDetailsProduit(produit);
+
+    produitsContainer.appendChild(div);
   });
 }
+
 
 function chargerProduits() {
   const skip = currentPage * limit;
@@ -148,7 +191,64 @@ function ajouterAuPanier(produit) {
   panier.push(produit);
   localStorage.setItem('panier', JSON.stringify(panier));
   alert("Produit ajouté au panier !");
+  mettreAJourCompteurPanier();
 }
 
 chargerProduits();
 
+
+function afficherDetailsProduit(produit) {
+  // Remplir les infos texte
+  document.getElementById("productModalLabel").textContent = produit.title;
+  document.getElementById("productDescription").textContent = produit.description;
+  document.getElementById("productPrice").textContent = produit.price;
+  document.getElementById("productStock").textContent = produit.stock;
+  document.getElementById("productQuantity").value = 1;
+
+  // Injecter les images dans le carrousel
+  const carouselInner = document.getElementById("carouselInner");
+  carouselInner.innerHTML = "";
+
+  produit.images.forEach((img, index) => {
+    const div = document.createElement("div");
+    div.className = `carousel-item ${index === 0 ? "active" : ""}`;
+    div.innerHTML = `<img src="${img}" class="d-block w-100" style="max-height:300px; object-fit:cover">`;
+    carouselInner.appendChild(div);
+  });
+
+  // Ajouter l’événement "ajouter au panier"
+  document.getElementById("btnAddToCart").onclick = () => {
+  const quantite = parseInt(document.getElementById("productQuantity").value);
+  ajouterAuPanier(produit, quantite);
+};
+
+
+  // Ouvrir la modale Bootstrap
+  const modal = new bootstrap.Modal(document.getElementById("productModal"));
+  modal.show();
+}
+
+
+function mettreAJourCompteurPanier() {
+  const badge = document.getElementById("cartCount");
+  if (!badge) {
+    console.warn("⚠️ Élément #cartCount introuvable");
+    return;
+  }
+
+  const panier = JSON.parse(localStorage.getItem("panier")) || [];
+  const total = panier.reduce((acc, item) => acc + item.quantite, 0);
+
+  if (total > 0) {
+    badge.textContent = total;
+    badge.style.display = "inline-block";
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  mettreAJourCompteurPanier();
+});
